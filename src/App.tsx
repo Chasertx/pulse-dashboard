@@ -1,64 +1,79 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Header } from './components/Header';
-import { ResourceCard } from './components/ResourceCard';
-import { GitCard } from './components/GitCard'; // Short comment: New git visualization component
-import type { AzureResource } from './types/pulse';
+import { ServicePod } from './components/ServicePod';
+import { ActivityFeed } from './components/ActivityFeed';
 
 function App() {
-  const [resources, setResources] = useState<AzureResource[]>([]);
-  const [gitRepos, setGitRepos] = useState<any[]>([]); // Short comment: State for GitHub pulse data
+  const [resources, setResources] = useState<any[]>([]);
+  const [gitRepos, setGitRepos] = useState<any[]>([]);
 
-  // Short comment: Unified fetch for both Azure and GitHub telemetry
+  // Short comment: Fetches infrastructure and git data in parallel
   const fetchVitals = async () => {
     try {
       const [resData, gitData] = await Promise.all([
         axios.get('http://localhost:5000/api/dashboard/resources'),
         axios.get('http://localhost:5000/api/git/latest')
       ]);
-
       setResources(resData.data);
       setGitRepos(gitData.data);
       
-      if (Math.random() > 0.8) console.log("Pulse synced: 🟢 System Healthy");
+      // Random log as requested
+      if (Math.random() > 0.8) console.log("Pulse: Systems synchronized.");
     } catch (err) {
-      console.error("Link to Pulse API severed.");
+      console.error("Link severed.");
     }
   };
 
   useEffect(() => {
     fetchVitals();
-    const timer = setInterval(fetchVitals, 30000); 
+    const timer = setInterval(fetchVitals, 30000);
     return () => clearInterval(timer);
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="flex flex-col h-screen w-full bg-black text-slate-300 overflow-hidden">
       <Header />
       
-      <main className="max-w-7xl mx-auto p-10 space-y-12">
-        {/* Short comment: Code Velocity Section */}
-        {gitRepos.length > 0 && (
-          <section>
-            <h2 className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-6">Code Activity</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {gitRepos.map(repo => (
-                <GitCard key={repo.repoName} repo={repo} />
-              ))}
-            </div>
-          </section>
-        )}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Main Infrastructure Grid */}
+        <section className="flex-1 overflow-y-auto p-8 scrollbar-hide">
+          <header className="mb-8 flex items-center gap-4">
+            <h2 className="text-zinc-500 text-[11px] font-bold uppercase tracking-[0.4em]">Infrastructure</h2>
+            <div className="h-[1px] flex-1 bg-zinc-900" />
+          </header>
 
-        {/* Short comment: Infrastructure Health Section */}
-        <section>
-          <h2 className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-6">Cloud Resources</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {resources.map(res => (
-              <ResourceCard key={res.id} resource={res} />
-            ))}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {gitRepos.map(repo => {
+              // Short comment: Precise matching - strips dashes and compares exact normalized strings
+              const matchedResource = resources.find(res => {
+                const normalizedRes = res.name.toLowerCase().replace(/-/g, '');
+                const normalizedRepo = repo.repoName.toLowerCase().replace(/-/g, '');
+                return normalizedRes === normalizedRepo;
+              });
+
+              return (
+                <ServicePod 
+                  key={repo.repoName} 
+                  repo={repo} 
+                  resource={matchedResource} 
+                />
+              );
+            })}
           </div>
         </section>
-      </main>
+
+        {/* Short comment: Obsidian Sidebar for activity feed */}
+        <aside className="w-96 bg-[#111113] border-l border-zinc-800 flex flex-col shadow-2xl z-10">
+          <div className="p-5 border-b border-zinc-800 bg-white/[0.02] flex justify-between items-center">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Activity Log</span>
+            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_#10b981] animate-pulse" />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <ActivityFeed repos={gitRepos} />
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
