@@ -1,4 +1,3 @@
-import React from 'react';
 import { Github, GitCommit, CheckCircle2, AlertCircle, Clock, Hash } from 'lucide-react';
 
 interface GitRepo {
